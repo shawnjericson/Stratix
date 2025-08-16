@@ -16,48 +16,32 @@ const taskRoutes = require('./routes/tasks');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy for Vercel
-app.set('trust proxy', 1);
+// Middleware cơ bản
+app.use(helmet()); // Security headers
+app.use(morgan('combined')); // HTTP request logging
 
-// Security middleware
-app.use(helmet());
-
-// HTTP request logging
-app.use(morgan('combined'));
-
-// CORS configuration - SIMPLE VERSION
+// CORS configuration - CHỈ SỬA PHẦN NÀY
 const allowedOrigins = [
     'http://localhost:3000',
     'https://stratix-sand.vercel.app',
-    'https://stratixbackend.vercel.app'
-];
+    process.env.CORS_ORIGIN
+].filter(Boolean);
 
 app.use(cors({
     origin: function (origin, callback) {
-        console.log('🌐 Request origin:', origin);
+        // Allow requests with no origin (mobile apps, etc.)
+        if (!origin) return callback(null, true);
 
-        // Allow requests with no origin
-        if (!origin) {
-            console.log('✅ Allowing request with no origin');
-            return callback(null, true);
-        }
-
-        // Check if origin is allowed
         if (allowedOrigins.includes(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin)) {
-            console.log('✅ CORS allowed for origin:', origin);
             callback(null, true);
         } else {
-            console.log('❌ CORS blocked origin:', origin);
-            callback(new Error(`Origin ${origin} not allowed by CORS`));
+            callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
-// Handle preflight requests
-app.options('*', cors());
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -65,44 +49,27 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
     message: {
         error: 'Too many requests',
         message: 'Quá nhiều yêu cầu từ IP này, vui lòng thử lại sau'
     },
-    standardHeaders: true,
-    legacyHeaders: false,
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 app.use('/api', limiter);
+
+// Trust proxy (nếu deploy đằng sau reverse proxy như nginx)
+app.set('trust proxy', 1);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({
         status: 'OK',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
-        cors: allowedOrigins
-    });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-    res.json({
-        message: 'TaskMaster API Server',
-        version: '1.0.0',
-        status: 'running',
-        environment: process.env.NODE_ENV || 'development',
-        endpoints: {
-            health: '/health',
-            auth: '/api/auth',
-            users: '/api/users',
-            tasks: '/api/tasks'
-        },
-        cors: {
-            allowedOrigins: allowedOrigins
-        }
+        environment: process.env.NODE_ENV || 'development'
     });
 });
 
@@ -111,12 +78,27 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 
-// Simple 404 handler
+// Root endpoint
+app.get('/', (req, res) => {
+    res.json({
+        message: 'TaskMaster API Server',
+        version: '1.0.0',
+        documentation: '/api/docs', // Có thể thêm Swagger docs sau
+        endpoints: {
+            auth: '/api/auth',
+            users: '/api/users',
+            tasks: '/api/tasks',
+        }
+    });
+});
+
+// 404 handler
 app.use((req, res) => {
     res.status(404).json({
-        error: 'Not found',
-        message: 'Endpoint không tồn tại',
-        path: req.originalUrl
+        error: 'Endpoint not found',
+        message: 'Không tìm thấy endpoint này',
+        path: req.originalUrl,
+        method: req.method
     });
 });
 
@@ -124,12 +106,12 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
     console.error('Global error handler:', error);
 
-    // CORS Error
-    if (error.message && error.message.includes('CORS')) {
-        return res.status(403).json({
-            error: 'CORS Error',
-            message: 'Domain không được phép truy cập',
-            origin: req.get('Origin')
+    // Mongoose validation error
+    if (error.name === 'ValidationError') {
+        return res.status(400).json({
+            error: 'Validation Error',
+            message: 'Dữ liệu không hợp lệ',
+            details: Object.values(error.errors).map(e => e.message)
         });
     }
 
@@ -148,35 +130,105 @@ app.use((error, req, res, next) => {
         });
     }
 
+    // Database errors
+    if (error.code === '23505') { // PostgreSQL unique constraint violation
+        return res.status(409).json({
+            error: 'Duplicate Entry',
+            message: 'Dữ liệu đã tồn tại'
+        });
+    }
+
+    if (error.code === '23503') { // PostgreSQL foreign key constraint violation
+        return res.status(400).json({
+            error: 'Invalid Reference',
+            message: 'Tham chiếu dữ liệu không hợp lệ'
+        });
+    }
+
     // Default error response
     res.status(error.status || 500).json({
         error: error.name || 'Internal Server Error',
         message: process.env.NODE_ENV === 'production'
             ? 'Có lỗi xảy ra, vui lòng thử lại sau'
-            : error.message
+            : error.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
     });
+});
+
+// Graceful shutdown handler
+const gracefulShutdown = (signal) => {
+    console.log(`\n${signal} received. Starting graceful shutdown...`);
+
+    const server = app.listen(PORT);
+
+    server.close(() => {
+        console.log('HTTP server closed.');
+
+        // Close database connections
+        // pool.end() // Uncomment when using connection pool
+
+        console.log('Database connections closed.');
+        process.exit(0);
+    });
+
+    // Force close server after 30s
+    setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 30000);
+};
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
 });
 
 // Start server
 const startServer = async () => {
     try {
+        // Kiểm tra kết nối database trước khi start server
         const dbConnected = await checkConnection();
+
         if (!dbConnected) {
-            console.error('❌ Database connection failed');
+            console.error('❌ Cannot start server: Database connection failed');
             process.exit(1);
         }
 
         const server = app.listen(PORT, () => {
             console.log(`
-🚀 TaskMaster API Server running!
+🚀 TaskMaster API Server đang chạy!
 📡 Port: ${PORT}
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
+📊 Database: PostgreSQL
 🔐 CORS: ${allowedOrigins.join(', ')}
-            `);
+⏰ Started at: ${new Date().toLocaleString('vi-VN')}
+
+📋 Available endpoints:
+   • Health: GET  /health
+   • Auth:   POST /api/auth/login
+   • Users:  GET  /api/users
+   
+🔍 Documentation: http://localhost:${PORT}
+      `);
         });
 
+        // Handle server errors
         server.on('error', (error) => {
-            console.error('❌ Server error:', error);
+            if (error.code === 'EADDRINUSE') {
+                console.error(`❌ Port ${PORT} is already in use`);
+            } else {
+                console.error('❌ Server error:', error);
+            }
             process.exit(1);
         });
 
@@ -186,13 +238,5 @@ const startServer = async () => {
     }
 };
 
-// Export for Vercel
-module.exports = app;
-
-// Start server if not in Vercel
-if (!process.env.VERCEL) {
-    startServer();
-}
-
-// Also export as default for Vercel compatibility
-module.exports.default = app;
+// Start the server
+startServer();
