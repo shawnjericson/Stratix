@@ -8,6 +8,13 @@ Hỗ trợ **đăng nhập & phân quyền**, **bảng Kanban**, và **tìm ki�
 - Frontend (Vercel): https://stratix-sand.vercel.app/
 - Backend API (Vercel): https://stratixbackend.vercel.app/api
 
+Dùng các account sau để tham khảo
+username: admin 
+Password: Admin@123
+
+username: director01 
+Password: Director@123
+
 ---
 
 ## Tính năng chính
