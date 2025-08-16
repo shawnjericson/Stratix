@@ -1,4 +1,5 @@
-const express = require('express');
+const express = require('express');// Thêm task routes
+// app.use('/api/roles', roleRoutes); // Sẽ thconst express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -11,7 +12,7 @@ const { checkConnection } = require('./config/database');
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const taskRoutes = require('./routes/tasks');
+const taskRoutes = require('./routes/tasks'); // Thêm task routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,24 +21,9 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet()); // Security headers
 app.use(morgan('combined')); // HTTP request logging
 
-// CORS configuration - CHỈ SỬA PHẦN NÀY
-const allowedOrigins = [
-    'http://localhost:3000',
-    'https://stratix-sand.vercel.app',
-    process.env.CORS_ORIGIN
-].filter(Boolean);
-
+// CORS configuration
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, etc.)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.includes(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -76,7 +62,9 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/tasks', taskRoutes);
+app.use('/api/tasks', taskRoutes); // Thêm task routes
+// app.use('/api/roles', roleRoutes); // Sẽ thêm sau
+// app.use('/api/departments', departmentRoutes); // Sẽ thêm sau
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -88,18 +76,20 @@ app.get('/', (req, res) => {
             auth: '/api/auth',
             users: '/api/users',
             tasks: '/api/tasks',
+            // roles: '/api/roles',
+            // departments: '/api/departments'
         }
     });
 });
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({
-        error: 'Endpoint not found',
-        message: 'Không tìm thấy endpoint này',
-        path: req.originalUrl,
-        method: req.method
-    });
+  res.status(404).json({
+    error: 'Endpoint not found',
+    message: 'Không tìm thấy endpoint này',
+    path: req.originalUrl,
+    method: req.method
+  });
 });
 
 // Global error handler
@@ -210,7 +200,7 @@ const startServer = async () => {
 📡 Port: ${PORT}
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
 📊 Database: PostgreSQL
-🔐 CORS: ${allowedOrigins.join(', ')}
+🔐 CORS: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}
 ⏰ Started at: ${new Date().toLocaleString('vi-VN')}
 
 📋 Available endpoints:
