@@ -1,70 +1,93 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Stratix – Task Management System
 
-## Available Scripts
+Ứng dụng quản lý công việc (**React + Tailwind** ở frontend, **Express + PostgreSQL (Supabase)** ở backend), triển khai trên **Vercel**.  
+Hỗ trợ **đăng nhập & phân quyền**, **bảng Kanban**, và **tìm kiếm có debounce** để tối ưu hiệu năng.
 
-In the project directory, you can run:
+> ⚠️ Thay các domain dưới đây cho đúng dự án của bạn.
+- Frontend (Vercel): https://stratix-sand.vercel.app/
+- Backend API (Vercel): https://stratixbackend.vercel.app/api
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Tính năng chính
+- **Đăng nhập & Phân quyền**: người dùng đăng nhập, gán vai trò (**Admin**, **Manager**, **Member**). Truy cập API được kiểm soát bằng middleware.
+- **Bảng Kanban**: các cột *To Do*, *In Progress*, *Review*, *Done*; kéo thả thay đổi trạng thái (nếu cần, dùng API `PATCH /api/tasks/:id/status`).
+- **Tìm kiếm có Debounce**: ô tìm kiếm chỉ gọi API sau một khoảng trễ (mặc định ~300ms) để giảm request dư thừa.
+- CRUD **Tasks**: tạo / sửa / đổi trạng thái / xóa (theo quyền).
+- **Kiến trúc tách lớp**: UI ↔ Services (API) ↔ Server (routes, controllers, middleware) ↔ DB.
+- **Supabase (Postgres)**: lưu dữ liệu; có thể bật **RLS** để tăng bảo mật (tùy yêu cầu).
+- **Triển khai Vercel**: monorepo hoặc tách frontend/backend thành 2 project.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Kiến trúc & Công nghệ
+- **Frontend**: React (Create React App), **Tailwind CSS**.
+- **Backend**: Node.js + **Express**.
+- **CSDL**: **PostgreSQL** trên **Supabase**.
+- **Triển khai**: **Vercel** (Functions cho API; Static build cho FE).
+- **CORS**: cấu hình cho phép FE local (`http://localhost:3000`) và domain Vercel.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```text
+root
+├─ frontend/                  # React + Tailwind
+│  ├─ public/index.html
+│  ├─ src/
+│  │  ├─ components/
+│  │  ├─ pages/
+│  │  ├─ hooks/               # useAuth, ...
+│  │  ├─ services/            # api.js (fetch tới backend)
+│  │  └─ App.jsx
+│  └─ package.json
+└─ backend/                   # Express + routes /api/*
+   ├─ index.js                # tạo app, middleware, routes
+   ├─ config                   # kết nối DB (Supabase Postgres)
+   ├─ routes/
+   │  ├─ auth.routes.js       # /api/auth/*
+   │  └─ tasks.routes.js      # /api/tasks/*
+   ├─ controllers/            # auth.controller.js, tasks.controller.js
+   ├─ middleware/
+   │  ├─ auth.js              # verify JWT
+   └─ package.json
+```
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Đăng nhập & Phân quyền (RBAC)
+- **Đăng nhập**: FE gửi `email/password` tới `POST /api/auth/login`. Backend kiểm tra DB → ký **JWT** (chứa `userId`, `role`) → FE lưu trong memory/localStorage.
+- **Bảo vệ route**: middleware `auth` kiểm tra `Authorization: Bearer <token>`; middleware `rbac(...roles)` kiểm tra quyền truy cập.
+- **Ví dụ quyền**:
+  - **Admin**: toàn quyền (CRUD users, tasks).
+  - **Manager**: CRUD tasks trong team.
+  - **Member**: xem & cập nhật task của mình.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📝 Giải thích kiến trúc & code
+1) **Tách lớp rõ ràng**:  
+   - *Frontend* chỉ xử lý UI/UX (React + Tailwind), gọi API qua `services/api.js`.  
+   - *Backend* chịu trách nhiệm xác thực, phân quyền, nghiệp vụ (controllers), và truy cập DB.  
+   - *Database* (Supabase) lưu trữ dữ liệu quan hệ, có bảng lịch sử trạng thái để audit.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+2) **Bảo mật & Phân quyền**:  
+   - Đăng nhập trả **JWT** chứa `userId` + `role`.  
+   - Mọi API nhạy cảm bắt buộc `Authorization: Bearer <token>`.  
+   - Middleware RBAC chặn truy cập sai vai trò (ví dụ, chỉ `ADMIN/MANAGER` mới xóa task).
 
-### `npm run eject`
+3) **Tối ưu trải nghiệm**:  
+   - **Debounced search** giảm số lần gọi API khi người dùng gõ nhanh.  
+   - **Kanban** phản hồi theo thời gian thực (tuỳ chọn), cập nhật UI ngay sau khi PATCH thành công.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+4) **Hiệu năng serverless**:  
+   - Kết nối DB dạng **singleton pool** để không vượt quá giới hạn kết nối (*max clients reached*).  
+   - API dùng transaction khi đổi trạng thái để đảm bảo tính nhất quán và ghi lịch sử.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+5) **Triển khai đơn giản trên Vercel**:  
+   - FE build thành static files → render nhanh từ CDN biên.  
+   - BE chạy dưới dạng serverless function `/api/*` → dễ mở rộng, bảo trì.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+> Core luồng: **User** → (React) **Frontend** → gọi **Backend /api** → truy vấn **Postgres (Supabase)** → trả về JSON → FE cập nhật UI (Kanban/Search).
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 📄 Giấy phép
+Dùng nội bộ học tập / demo. Bản quyền thuộc tác giả dự án.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
