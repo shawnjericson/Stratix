@@ -717,12 +717,202 @@ export default function ElegantAnalyticsDashboard({ tasks = [], user }) {
   const handleExport = async (format) => {
     setIsExporting(true);
 
-    // Simulate export process
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Helper functions để xuất dữ liệu
+      const getStatusLabel = (status) => {
+        const statusMap = {
+          'todo': 'Chờ làm',
+          'in_progress': 'Đang làm',
+          'review': 'Đang duyệt',
+          'completed': 'Hoàn thành',
+          'cancelled': 'Đã hủy'
+        };
+        return statusMap[status] || status;
+      };
 
-    console.log(`Exporting ${format} format with ${filteredTasks.length} tasks`);
+      const getPriorityLabel = (priority) => {
+        const priorityMap = {
+          'low': 'Thấp',
+          'medium': 'Trung bình',
+          'high': 'Cao',
+          'urgent': 'Khẩn cấp'
+        };
+        return priorityMap[priority] || priority;
+      };
 
-    setIsExporting(false);
+      switch (format) {
+        case 'csv':
+          // Export CSV
+          const headers = ['ID', 'Tiêu đề', 'Mô tả', 'Trạng thái', 'Độ ưu tiên', 'Ngày tạo', 'Hạn chót'];
+
+          const csvContent = [
+            headers.join(','),
+            ...filteredTasks.map(task => [
+              task.id || '',
+              `"${(task.title || '').replace(/"/g, '""')}"`,
+              `"${(task.description || '').replace(/"/g, '""')}"`,
+              getStatusLabel(task.status),
+              getPriorityLabel(task.priority),
+              task.created_at ? new Date(task.created_at).toLocaleDateString('vi-VN') : '',
+              task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : ''
+            ].join(','))
+          ].join('\n');
+
+          const csvBlob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const csvLink = document.createElement('a');
+          const csvUrl = URL.createObjectURL(csvBlob);
+          csvLink.href = csvUrl;
+          csvLink.download = `tasks_export_${new Date().toISOString().split('T')[0]}.csv`;
+          csvLink.style.visibility = 'hidden';
+          document.body.appendChild(csvLink);
+          csvLink.click();
+          document.body.removeChild(csvLink);
+          URL.revokeObjectURL(csvUrl);
+          break;
+
+        case 'json':
+          // Export JSON
+          const exportData = {
+            export_info: {
+              exported_at: new Date().toISOString(),
+              total_tasks: filteredTasks.length,
+              export_period: selectedPeriod,
+              exported_by: user?.name || 'Unknown'
+            },
+            analytics: {
+              completion_rate: analyticsData.completionRate,
+              total_tasks: analyticsData.totalTasks,
+              in_progress_tasks: analyticsData.inProgressTasks,
+              overdue_tasks: analyticsData.overdueTasks.length
+            },
+            tasks: filteredTasks.map(task => ({
+              id: task.id,
+              title: task.title,
+              description: task.description,
+              status: task.status,
+              status_label: getStatusLabel(task.status),
+              priority: task.priority,
+              priority_label: getPriorityLabel(task.priority),
+              created_at: task.created_at,
+              due_date: task.due_date,
+              updated_at: task.updated_at
+            }))
+          };
+
+          const jsonBlob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+          const jsonLink = document.createElement('a');
+          const jsonUrl = URL.createObjectURL(jsonBlob);
+          jsonLink.href = jsonUrl;
+          jsonLink.download = `tasks_analytics_${new Date().toISOString().split('T')[0]}.json`;
+          jsonLink.style.visibility = 'hidden';
+          document.body.appendChild(jsonLink);
+          jsonLink.click();
+          document.body.removeChild(jsonLink);
+          URL.revokeObjectURL(jsonUrl);
+          break;
+
+        case 'pdf':
+          // Export HTML (có thể mở và in thành PDF)
+          const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Báo cáo Analytics - Stratix</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+    .metric { display: inline-block; margin: 10px 20px; text-align: center; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .metric-value { font-size: 24px; font-weight: bold; color: #1e293b; }
+    .metric-label { font-size: 14px; color: #64748b; margin-top: 5px; }
+    .section { margin: 30px 0; }
+    .section h3 { color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+    th { background-color: #f8fafc; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 Báo cáo Phân tích Công việc</h1>
+    <p>Được xuất từ Stratix vào ${new Date().toLocaleDateString('vi-VN')} lúc ${new Date().toLocaleTimeString('vi-VN')}</p>
+  </div>
+
+  <div class="section">
+    <h3>🎯 Tổng quan</h3>
+    <div class="metric">
+      <div class="metric-value">${analyticsData.totalTasks}</div>
+      <div class="metric-label">Tổng công việc</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">${analyticsData.completionRate}%</div>
+      <div class="metric-label">Tỷ lệ hoàn thành</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">${analyticsData.inProgressTasks}</div>
+      <div class="metric-label">Đang thực hiện</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">${analyticsData.overdueTasks.length}</div>
+      <div class="metric-label">Trễ hạn</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>📝 Danh sách công việc (${filteredTasks.length} công việc)</h3>
+    <table>
+      <thead>
+        <tr><th>Tiêu đề</th><th>Trạng thái</th><th>Độ ưu tiên</th><th>Hạn chót</th></tr>
+      </thead>
+      <tbody>
+        ${filteredTasks.slice(0, 50).map(task => `
+          <tr>
+            <td>${task.title || 'Không có tiêu đề'}</td>
+            <td>${getStatusLabel(task.status)}</td>
+            <td>${getPriorityLabel(task.priority)}</td>
+            <td>${task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    ${filteredTasks.length > 50 ? `<p><em>Chỉ hiển thị 50 công việc đầu tiên. Tổng cộng: ${filteredTasks.length} công việc.</em></p>` : ''}
+  </div>
+
+  <div style="margin-top: 50px; text-align: center; color: #64748b; font-size: 12px;">
+    <p>Báo cáo được tạo tự động bởi Stratix Task Management System</p>
+  </div>
+</body>
+</html>
+        `;
+
+          const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+          const htmlLink = document.createElement('a');
+          const htmlUrl = URL.createObjectURL(htmlBlob);
+          htmlLink.href = htmlUrl;
+          htmlLink.download = `analytics_report_${new Date().toISOString().split('T')[0]}.html`;
+          htmlLink.style.visibility = 'hidden';
+          document.body.appendChild(htmlLink);
+          htmlLink.click();
+          document.body.removeChild(htmlLink);
+          URL.revokeObjectURL(htmlUrl);
+          break;
+
+        default:
+          console.error('Unsupported export format:', format);
+          return;
+      }
+
+      console.log(`✅ Đã xuất thành công ${filteredTasks.length} công việc định dạng ${format.toUpperCase()}`);
+
+    } catch (error) {
+      console.error('❌ Lỗi khi xuất dữ liệu:', error);
+      alert('Có lỗi xảy ra khi xuất dữ liệu. Vui lòng thử lại.');
+    } finally {
+      // Delay một chút để user thấy loading
+      setTimeout(() => {
+        setIsExporting(false);
+      }, 1000);
+    }
   };
 
   return (
