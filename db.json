@@ -1,0 +1,68 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "password": "123456",
+      "email": "admin@taskmanager.com",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "username": "user1",
+      "password": "password",
+      "email": "user1@taskmanager.com",
+      "role": "user"
+    },
+    {
+      "id": 1754744019589,
+      "username": "user2",
+      "email": "a@gmail.com",
+      "password": "123456",
+      "role": "user",
+      "createdAt": "2025-08-09T12:53:39.589Z",
+      "updatedAt": "2025-08-09T12:53:39.589Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Học React Hooks",
+      "description": "Hoàn thành bài học về useState và useEffect",
+      "status": "completed",
+      "priority": "high",
+      "dueDate": "2024-08-15",
+      "createdBy": 1,
+      "createdAt": "2024-08-01T10:00:00Z",
+      "updatedAt": "2025-08-09T12:53:51.962Z"
+    },
+    {
+      "id": "2",
+      "title": "Setup JSON Server",
+      "description": "Cài đặt và cấu hình JSON Server cho project",
+      "status": "completed",
+      "priority": "medium",
+      "dueDate": "2024-08-10",
+      "createdBy": 1,
+      "createdAt": "2024-08-01T11:00:00Z",
+      "updatedAt": "2025-08-09T12:50:03.706Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "1",
+      "name": "Development",
+      "color": "#3498db"
+    },
+    {
+      "id": "2",
+      "name": "Learning",
+      "color": "#e74c3c"
+    },
+    {
+      "id": "3",
+      "name": "Personal",
+      "color": "#27ae60"
+    }
+  ]
+}

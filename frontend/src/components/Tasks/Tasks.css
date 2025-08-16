@@ -1,0 +1,192 @@
+/* TaskForm Styles */
+.task-form-container {
+    @apply p-6;
+}
+
+.task-form {
+    @apply space-y-6;
+}
+
+.task-form-title {
+    @apply text-2xl font-bold text-gray-900 mb-6 text-center;
+}
+
+.form-field {
+    @apply space-y-2;
+}
+
+.form-label {
+    @apply block text-sm font-medium text-gray-700;
+}
+
+.form-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.form-input--error {
+    @apply border-red-300 focus:ring-red-500;
+}
+
+.form-textarea {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.form-select {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.form-error {
+    @apply text-sm text-red-600;
+}
+
+.form-hint {
+    @apply text-xs text-gray-500;
+}
+
+.form-row {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+}
+
+.form-actions {
+    @apply flex justify-end space-x-3 pt-6 border-t border-gray-200;
+}
+
+.cancel-btn {
+    @apply px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200;
+}
+
+.save-btn {
+    @apply px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center space-x-2;
+}
+
+/* TaskList Styles */
+.task-list-container {
+    @apply space-y-6;
+}
+
+.task-list-loading {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+}
+
+.loading-text {
+    @apply mt-4 text-gray-600;
+}
+
+.task-list-empty {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+}
+
+.empty-icon {
+    @apply text-6xl mb-4;
+}
+
+.empty-title {
+    @apply text-xl font-semibold text-gray-900 mb-2;
+}
+
+.empty-description {
+    @apply text-gray-600;
+}
+
+.task-list-header {
+    @apply mb-6;
+}
+
+.task-list-title {
+    @apply text-2xl font-bold text-gray-900 mb-4;
+}
+
+.task-list-stats {
+    @apply flex flex-wrap gap-4;
+}
+
+.task-stat {
+    @apply px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.task-stat--todo {
+    @apply bg-yellow-100 text-yellow-800;
+}
+
+.task-stat--in-progress {
+    @apply bg-blue-100 text-blue-800;
+}
+
+.task-stat--completed {
+    @apply bg-green-100 text-green-800;
+}
+
+.task-list-content {
+    @apply space-y-8;
+}
+
+.task-group {
+    @apply space-y-4;
+}
+
+.task-group-title {
+    @apply text-lg font-semibold border-b pb-2 mb-4;
+}
+
+.task-group-title--todo {
+    @apply text-yellow-700 border-yellow-200;
+}
+
+.task-group-title--in-progress {
+    @apply text-blue-700 border-blue-200;
+}
+
+.task-group-title--completed {
+    @apply text-green-700 border-green-200;
+}
+
+.task-group-content {
+    @apply space-y-3;
+}
+
+/* Animation utilities */
+@keyframes float {
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+.task-management::-webkit-scrollbar {
+    width: 6px;
+}
+
+.task-management::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-lg;
+}
+
+.task-management::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-lg;
+}
+
+.task-management::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .form-row {
+        @apply grid-cols-1;
+    }
+
+    .task-list-stats {
+        @apply flex-col;
+    }
+
+    .form-actions {
+        @apply flex-col space-x-0 space-y-3;
+    }
+}
